@@ -1,0 +1,124 @@
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <script src="./build/main.js"></script>
+    <script>
+        window.onload = () => {
+            const app = Elm.Main.init({
+                node: document.getElementById("main"),
+                flags: Math.floor(Math.random() * 100)
+            })
+
+            const sounds = {};
+
+            ["ā", "á", "ǎ", "à", "ō", "ó", "ǒ", "ò", "ē", "é", "ě", "è", "ī",
+                "í", "ǐ", "ì", "ū", "ú", "ǔ", "ù", "ǖ", "ǘ", "ǚ", "ǜ"
+            ].forEach(c => {
+                sounds[c] = new Audio(`sound/${c}.mp3`)
+            })
+
+            app.ports.playSoundFromString.subscribe((x) => {
+                console.log(sounds[x])
+                sounds[x].pause()
+                sounds[x].load()
+                sounds[x].play()
+            })
+        }
+    </script>
+    <style>
+        :root {
+            font-size: 16px;
+            --black: #325a92;
+            --blue: #73a8f2;
+            --green: #43f268;
+            --red: #f24843;
+            --grey: #736268;
+            font-family: system-ui, sans-serif;
+        }
+
+        body>div {
+            max-width: 17rem;
+            display: grid;
+            gap: 0.4rem;
+        }
+
+        button {
+            transition: all 0.3s ease-out;
+            font-weight: bold;
+            font-size: 2rem;
+            border-radius: 1rem;
+            border: 0;
+            box-shadow: 0rem 0.4rem var(--black);
+            margin-bottom: 0.4rem;
+            color: white;
+            background-color: var(--color, hotpink);
+        }
+
+        button:hover {
+            cursor: pointer;
+        }
+
+        button:active {
+            transform: translate(0, 0.4rem);
+            box-shadow: 0rem 0rem var(--black);
+        }
+
+        button:disabled {
+            display: none;
+        }
+
+        .options {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            justify-items: stretch;
+            gap: 0.4rem;
+        }
+
+        button.next {
+            animation: 2s ease-out 0s enter;
+            font-style: italic;
+        }
+
+        @keyframes enter {
+            0% {
+                height: 0;
+            }
+
+            100% {
+                height: 50px;
+            }
+        }
+
+        .options button {
+            height: 3rem;
+        }
+
+        button[data-state="unset"] {
+            background-color: var(--blue);
+        }
+
+        button[data-state="incorrect-this"] {
+            background-color: var(--red);
+        }
+
+        button[data-state="incorrect-other"] {
+            background-color: var(--grey);
+        }
+
+        button[data-state="correct-this"] {
+            background-color: var(--green);
+        }
+
+        button[data-state="correct-other"] {
+            background-color: var(--grey);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main"></div>
+</body>
+
+
+</html>
