@@ -40,7 +40,7 @@ play =
 
 main : Program Int Model Msg
 main =
-    Browser.element
+    Browser.document
         { init = init
         , update = update
         , view = view
@@ -48,24 +48,28 @@ main =
         }
 
 
-view : Model -> Html Msg
+view : Model -> Browser.Document Msg
 view superModel =
-    case superModel.state of
-        Menu ->
-            viewMenu
+    { title = "mandarin tones quiz!"
+    , body =
+        case superModel.state of
+            Menu ->
+                viewMenu
 
-        InProgress model ->
-            viewGame model
+            InProgress model ->
+                viewGame model
 
-        Results ->
-            Html.text "TODO!"
+            Results ->
+                [ Html.text "TODO!" ]
+    }
 
 
-viewMenu : Html Msg
+viewMenu : List (Html Msg)
 viewMenu =
-    Html.button
+    [ Html.button
         [ Html.Events.onClick Next ]
         [ Html.text "start!" ]
+    ]
 
 
 init : Int -> ( Model, Cmd msg )
@@ -115,13 +119,12 @@ update msg model =
             )
 
 
-viewGame : Game -> Html Msg
+viewGame : Game -> List (Html Msg)
 viewGame model =
-    Html.div []
-        [ viewSound model.answer
-        , viewOptions model
-        , viewNext (Just model.answer /= model.guess)
-        ]
+    [ viewSound model.answer
+    , viewOptions model
+    , viewNext (Just model.answer /= model.guess)
+    ]
 
 
 viewNext : Bool -> Html Msg

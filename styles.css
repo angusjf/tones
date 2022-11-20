@@ -1,0 +1,85 @@
+:root {
+    font-size: 16px;
+    font-family: system-ui, sans-serif;
+    --blue: 215, 50%;
+    --green: 133, 50%;
+    --red: 0, 80%;
+    --grey: 140, 3%;
+    --pink: 339, 68%;
+}
+
+body {
+    max-width: 17rem;
+    margin: 0 auto;
+    display: flex;
+    gap: 0.4rem;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
+}
+
+button {
+    --depth: 0.4rem;
+    font-weight: bold;
+    font-size: 2rem;
+    border-radius: 1rem;
+    border: 0;
+    box-shadow: 0rem var(--depth) hsl(var(--color, 0, 0%), 63%);
+    margin-bottom: var(--depth);
+    color: white;
+    background-color: hsl(var(--color, 0, 0%), 74%);
+    padding: 0;
+    --color: var(--pink);
+}
+
+button:hover {
+    cursor: pointer;
+}
+
+button:active {
+    transform: translateY(var(--depth));
+    box-shadow: 0rem 0 hsl(var(--color, 0, 0%), 63%);
+}
+
+.options {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    justify-items: stretch;
+    gap: 0.4rem;
+}
+
+button.next {
+    transition: height 0.2s, opacity 0.1s;
+    font-style: italic;
+    height: 50px;
+    --color: var(--green);
+}
+
+button.next:disabled {
+    opacity: 0;
+    height: 0;
+}
+
+.options button {
+    height: 3rem;
+}
+
+button[data-state="unset"] {
+    --color: var(--blue);
+}
+
+button[data-state="incorrect-this"] {
+    --color: var(--red);
+}
+
+button[data-state="incorrect-other"] {
+    --color: var(--grey);
+}
+
+button[data-state="correct-this"] {
+    --color: var(--green);
+}
+
+button[data-state="correct-other"] {
+    --color: var(--grey);
+}
