@@ -8,132 +8,117 @@ import Random
 import Types exposing (..)
 
 
-type SuperModel
-    = Game Model
-    | Init Int
+type alias Model =
+    { seed : Random.Seed, state : State }
+
+
+type State
+    = InProgress Game
+    | Menu
     | Results
 
 
-type alias Model =
+type alias Game =
     { answer : ( Vowel, Tone )
     , guess : Maybe ( Vowel, Tone )
-    , seed : Random.Seed
     }
 
 
 type Msg
     = Guess ( Vowel, Tone )
-    | PlaySound
+    | PlaySound ( Vowel, Tone )
     | Next
-    | NewGame Int
 
 
 port playSoundFromString : String -> Cmd msg
 
 
+play : ( Vowel, Tone ) -> Cmd msg
 play =
     char >> playSoundFromString
 
 
-main : Program Int SuperModel Msg
+main : Program Int Model Msg
 main =
     Browser.element
-        { init = superInit
-        , update = superUpdate
-        , view = superView
+        { init = init
+        , update = update
+        , view = view
         , subscriptions = \_ -> Sub.none
         }
 
 
-superView : SuperModel -> Html Msg
-superView superModel =
-    case superModel of
-        Init s ->
-            viewInit s
+view : Model -> Html Msg
+view superModel =
+    case superModel.state of
+        Menu ->
+            viewMenu
 
-        Game model ->
-            view model
+        InProgress model ->
+            viewGame model
 
         Results ->
             Html.text "TODO!"
 
 
-viewInit : Int -> Html Msg
-viewInit seed =
+viewMenu : Html Msg
+viewMenu =
     Html.button
-        [ Html.Events.onClick (NewGame seed) ]
+        [ Html.Events.onClick Next ]
         [ Html.text "start!" ]
 
 
-superInit : Int -> ( SuperModel, Cmd msg )
-superInit seed =
-    ( Init seed, Cmd.none )
-
-
-init : Int -> ( Model, Cmd Msg )
-init int =
-    newQuestion <|
-        { answer = ( A, High )
-        , seed = Random.initialSeed int
-        , guess = Nothing
-        }
-
-
-superUpdate : Msg -> SuperModel -> ( SuperModel, Cmd Msg )
-superUpdate msg m =
-    case msg of
-        Guess guess ->
-            case m of
-                Game model ->
-                    ( Game
-                        { model
-                            | guess = Just guess
-                        }
-                    , play guess
-                    )
-
-                _ ->
-                    ( m, Cmd.none )
-
-        PlaySound ->
-            case m of
-                Game model ->
-                    ( Game model, play model.answer )
-
-                _ ->
-                    ( m, Cmd.none )
-
-        Next ->
-            case m of
-                Game model ->
-                    Tuple.mapFirst Game <| newQuestion model
-
-                _ ->
-                    ( m, Cmd.none )
-
-        NewGame x ->
-            Tuple.mapFirst Game <| init x
-
-
-newQuestion model =
-    let
-        ( answer, seed ) =
-            Random.step generator model.seed
-    in
-    ( { model
-        | answer = answer
-        , seed = seed
-        , guess = Nothing
+init : Int -> ( Model, Cmd msg )
+init seed =
+    ( { seed = Random.initialSeed seed
+      , state = Menu
       }
-    , play answer
+    , Cmd.none
     )
 
 
-view : Model -> Html Msg
-view model =
+mapGame : (Game -> Game) -> State -> State
+mapGame f state =
+    case state of
+        InProgress game ->
+            InProgress (f game)
+
+        _ ->
+            state
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        Guess guess ->
+            ( { model
+                | state = mapGame (\game -> { game | guess = Just guess }) model.state
+              }
+            , play guess
+            )
+
+        PlaySound sound ->
+            ( model
+            , play sound
+            )
+
+        Next ->
+            let
+                ( answer, seed ) =
+                    Random.step generator model.seed
+            in
+            ( { model
+                | state = InProgress { answer = answer, guess = Nothing }
+                , seed = seed
+              }
+            , play answer
+            )
+
+
+viewGame : Game -> Html Msg
+viewGame model =
     Html.div []
-        [ debug model
-        , viewSound
+        [ viewSound model.answer
         , viewOptions model
         , viewNext (Just model.answer /= model.guess)
         ]
@@ -149,18 +134,14 @@ viewNext disabled =
         [ Html.text "next ⮕" ]
 
 
-debug model =
-    Html.div []
-        [ Html.text <| "answer: " ++ char model.answer
-        , Html.text <| " / guess: " ++ (Maybe.withDefault "n/a" <| Maybe.map char model.guess)
-        ]
+viewSound : ( Vowel, Tone ) -> Html Msg
+viewSound answer =
+    Html.button
+        [ Html.Events.onClick (PlaySound answer) ]
+        [ Html.text "listen" ]
 
 
-viewSound =
-    Html.button [ Html.Events.onClick PlaySound ] [ Html.text "listen" ]
-
-
-viewOptions : Model -> Html Msg
+viewOptions : Game -> Html Msg
 viewOptions model =
     Html.div
         [ Html.Attributes.class "options" ]
@@ -168,7 +149,7 @@ viewOptions model =
         List.map (viewOption model) combinations
 
 
-viewOption : Model -> ( Vowel, Tone ) -> Html Msg
+viewOption : Game -> ( Vowel, Tone ) -> Html Msg
 viewOption model option =
     Html.button
         [ Html.Events.onClick (Guess option)
