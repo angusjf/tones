@@ -159,16 +159,16 @@ update msg model =
                             { game
                                 | guess = Just guess
                                 , results =
-                                    if guess == game.answer then
-                                        case game.guess of
-                                            Nothing ->
+                                    case game.guess of
+                                        Nothing ->
+                                            if guess == game.answer then
                                                 rightAnswer game.results
 
-                                            Just _ ->
+                                            else
                                                 wrongAnswer game.results
 
-                                    else
-                                        game.results
+                                        Just _ ->
+                                            game.results
                             }
                         )
                         model.state
