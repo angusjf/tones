@@ -5,7 +5,7 @@ import Html exposing (Html)
 import Html.Attributes
 import Html.Events
 import Random
-import Types exposing (..)
+import Types exposing (Tone, Vowel, char, combinations, generator)
 
 
 type alias Model =
@@ -15,12 +15,20 @@ type alias Model =
 type State
     = InProgress Game
     | Menu
-    | Results
+    | Over Results
 
 
 type alias Game =
     { answer : ( Vowel, Tone )
     , guess : Maybe ( Vowel, Tone )
+    , results : Results
+    }
+
+
+type alias Results =
+    { rounds : Int
+    , correct : Int
+    , incorrect : Int
     }
 
 
@@ -59,9 +67,48 @@ view superModel =
             InProgress model ->
                 viewGame model
 
-            Results ->
-                [ Html.text "TODO!" ]
+            Over results ->
+                viewResults results
     }
+
+
+viewResults : Results -> List (Html Msg)
+viewResults results =
+    let
+        score =
+            String.fromInt results.correct ++ "/" ++ String.fromInt results.rounds
+
+        quip =
+            distribute "bad luck!"
+                [ "nice try!", "well done!", "outstanding!" ]
+                (toFloat results.correct / toFloat results.rounds)
+    in
+    [ Html.h1 [] [ Html.text "game over" ]
+    , Html.h1 [] [ Html.text <| "score: " ++ score ]
+    , Html.h1 [] [ Html.text <| quip ]
+    , Html.button
+        [ Html.Events.onClick Next ]
+        [ Html.text "start!" ]
+    ]
+
+
+distribute : a -> List a -> Float -> a
+distribute x xs n =
+    let
+        len =
+            List.length xs
+
+        get i l =
+            if i == 0 then
+                Maybe.withDefault x <| List.head l
+
+            else if i < 0 then
+                x
+
+            else
+                get (i - 1) (Maybe.withDefault [] <| List.tail l)
+    in
+    get (round (n * toFloat len)) (x :: xs)
 
 
 viewMenu : List (Html Msg)
@@ -96,7 +143,25 @@ update msg model =
     case msg of
         Guess guess ->
             ( { model
-                | state = mapGame (\game -> { game | guess = Just guess }) model.state
+                | state =
+                    mapGame
+                        (\game ->
+                            { game
+                                | guess = Just guess
+                                , results =
+                                    if guess == game.answer then
+                                        case game.guess of
+                                            Nothing ->
+                                                rightAnswer game.results
+
+                                            Just _ ->
+                                                wrongAnswer game.results
+
+                                    else
+                                        game.results
+                            }
+                        )
+                        model.state
               }
             , play guess
             )
@@ -111,20 +176,68 @@ update msg model =
                 ( answer, seed ) =
                     Random.step generator model.seed
             in
-            ( { model
-                | state = InProgress { answer = answer, guess = Nothing }
-                , seed = seed
-              }
-            , play answer
-            )
+            let
+                gameOver =
+                    case model.state of
+                        InProgress { results } ->
+                            results.correct + results.incorrect >= results.rounds
+
+                        _ ->
+                            False
+            in
+            if gameOver then
+                case model.state of
+                    InProgress { results } ->
+                        ( { model | state = Over results }, Cmd.none )
+
+                    _ ->
+                        ( { model | state = Menu }, Cmd.none )
+
+            else
+                let
+                    results =
+                        case model.state of
+                            InProgress game ->
+                                game.results
+
+                            _ ->
+                                { incorrect = 0, correct = 0, rounds = 5 }
+                in
+                ( { model
+                    | state = InProgress { answer = answer, guess = Nothing, results = results }
+                    , seed = seed
+                  }
+                , play answer
+                )
+
+
+rightAnswer : Results -> Results
+rightAnswer results =
+    { results | correct = results.correct + 1 }
+
+
+wrongAnswer : Results -> Results
+wrongAnswer results =
+    { results | incorrect = results.incorrect + 1 }
 
 
 viewGame : Game -> List (Html Msg)
 viewGame model =
-    [ viewSound model.answer
+    [ viewQuestion model.results
+    , viewSound model.answer
     , viewOptions model
     , viewNext (Just model.answer /= model.guess)
     ]
+
+
+viewQuestion { correct, incorrect, rounds } =
+    let
+        t =
+            String.fromInt (correct + incorrect) ++ "/" ++ String.fromInt rounds
+    in
+    Html.h1
+        []
+        [ Html.text t ]
 
 
 viewNext : Bool -> Html Msg

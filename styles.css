@@ -23,6 +23,7 @@ body {
 @media (prefers-color-scheme: dark) {
     body {
         background-color: hsl(232, 23%, 14%);
+        color: white;
         --lightness: 53%;
         --lightness-shadow: 40%;
     }
