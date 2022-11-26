@@ -5,7 +5,7 @@ import Html exposing (Html)
 import Html.Attributes
 import Html.Events
 import Random
-import Types exposing (Tone, Vowel, char, combinations, generator)
+import Types exposing (Tone, Vowel, allVowels, char, generator, withTones)
 
 
 type alias Model =
@@ -21,6 +21,7 @@ type State
 type alias Game =
     { answer : ( Vowel, Tone )
     , guess : Maybe ( Vowel, Tone )
+    , options : List Vowel
     , results : Results
     }
 
@@ -36,6 +37,8 @@ type Msg
     = Guess ( Vowel, Tone )
     | PlaySound ( Vowel, Tone )
     | Next
+    | NewGame Int
+    | Back
 
 
 port playSoundFromString : String -> Cmd msg
@@ -87,8 +90,8 @@ viewResults results =
     , Html.h1 [] [ Html.text <| "score: " ++ score ]
     , Html.h1 [] [ Html.text <| quip ]
     , Html.button
-        [ Html.Events.onClick Next ]
-        [ Html.text "start!" ]
+        [ Html.Events.onClick Back ]
+        [ Html.text "play again" ]
     ]
 
 
@@ -113,9 +116,16 @@ distribute x xs n =
 
 viewMenu : List (Html Msg)
 viewMenu =
-    [ Html.button
-        [ Html.Events.onClick Next ]
-        [ Html.text "start!" ]
+    [ Html.h1 [] [ Html.text "tones quiz" ]
+    , Html.button
+        [ Html.Events.onClick (NewGame 1) ]
+        [ Html.text "easy" ]
+    , Html.button
+        [ Html.Events.onClick (NewGame 3) ]
+        [ Html.text "medium" ]
+    , Html.button
+        [ Html.Events.onClick (NewGame (List.length allVowels)) ]
+        [ Html.text "hard" ]
     ]
 
 
@@ -173,10 +183,6 @@ update msg model =
 
         Next ->
             let
-                ( answer, seed ) =
-                    Random.step generator model.seed
-            in
-            let
                 gameOver =
                     case model.state of
                         InProgress { results } ->
@@ -194,21 +200,42 @@ update msg model =
                         ( { model | state = Menu }, Cmd.none )
 
             else
-                let
-                    results =
-                        case model.state of
-                            InProgress game ->
-                                game.results
+                case model.state of
+                    InProgress game ->
+                        let
+                            ( vowels, answer, seed ) =
+                                generator (List.length game.options) model.seed
+                        in
+                        ( { model
+                            | state = InProgress { game | answer = answer, guess = Nothing, options = vowels }
+                            , seed = seed
+                          }
+                        , play answer
+                        )
 
-                            _ ->
-                                { incorrect = 0, correct = 0, rounds = 5 }
-                in
-                ( { model
-                    | state = InProgress { answer = answer, guess = Nothing, results = results }
-                    , seed = seed
-                  }
-                , play answer
-                )
+                    _ ->
+                        ( { model | state = Menu }, Cmd.none )
+
+        NewGame nVowels ->
+            let
+                ( vowels, answer, seed ) =
+                    generator nVowels model.seed
+            in
+            ( { model
+                | state =
+                    InProgress
+                        { answer = answer
+                        , guess = Nothing
+                        , results = { correct = 0, incorrect = 0, rounds = 5 }
+                        , options = vowels
+                        }
+                , seed = seed
+              }
+            , Cmd.none
+            )
+
+        Back ->
+            ( { model | state = Menu }, Cmd.none )
 
 
 rightAnswer : Results -> Results
@@ -262,7 +289,7 @@ viewOptions model =
     Html.div
         [ Html.Attributes.class "options" ]
     <|
-        List.map (viewOption model) combinations
+        List.map (viewOption model) (withTones model.options)
 
 
 viewOption : Game -> ( Vowel, Tone ) -> Html Msg

@@ -33,9 +33,36 @@ combinations =
     List.concatMap (\v -> List.map (Tuple.pair v) allTones) allVowels
 
 
-generator : Random.Generator ( Vowel, Tone )
-generator =
-    Random.pair (uniformWithDefault A allVowels) (uniformWithDefault High allTones)
+withTones =
+    List.concatMap (\v -> List.map (Tuple.pair v) allTones)
+
+
+nV : Int -> List Vowel -> Random.Generator (List Vowel)
+nV n set =
+    case n of
+        0 ->
+            Random.constant []
+
+        _ ->
+            uniformWithDefault A set
+                |> Random.andThen (\x -> Random.map (\xs -> x :: xs) (nV (n - 1) (List.filter (\v -> v /= x) set)))
+
+
+generator : Int -> Random.Seed -> ( List Vowel, ( Vowel, Tone ), Random.Seed )
+generator n seed0 =
+    let
+        ( vowels, seed1 ) =
+            Random.step (nV n allVowels) seed0
+
+        ( answer, seed2 ) =
+            Random.step
+                (Random.pair
+                    (uniformWithDefault A vowels)
+                    (uniformWithDefault High allTones)
+                )
+                seed1
+    in
+    ( vowels, answer, seed2 )
 
 
 uniformWithDefault : a -> List a -> Random.Generator a
